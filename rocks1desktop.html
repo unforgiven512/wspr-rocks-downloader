@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+	<title>vk7jj desktop queries</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="desktop .html file to load locally for personalised ClickHouse WSPR query access">
+	<meta name="author" content="Phil VK7JJ Dec 2021">
+	<meta charset="utf-8" />
+	<style>
+		html, body, div, span { font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif; background-color: white; font-size:10pt; padding-left:1em; /* use apple and android mobile fonts for everything */ }
+		.qbutton{ cursor:pointer; display:inline-block; background-color: white; color: #A96F6F; border: 1px black solid; border-radius: 0.4rem; padding: 0.3rem 0.8rem 0.3rem 0.8rem;  /* top right bottom left */ }
+		.qbutton:hover{ color:brown; }
+		.helplink { text-decoration:none; color:#A96F6F; }
+	</style>
+	<script>
+
+"use strict"; // javascript directive
+
+/* =============  HOW TO ==============
+
+	1.	Add your own queries below and they will automatically show up as radio buttons on the page
+		- queries MUST be named query1, query2, query3 etc or they will not show up as radio buttons on the page
+		- use the layout of the sample queries below as a guide.
+		- refine and test your queries using http://wspr.rocks/livequeries and then move them to this page for easy  access.
+
+	2.	Change the value of   format_results   (see preferences below) to one of these three values:
+		"CSV"
+		"TSV"
+		"JSON"
+		
+	3.	Set   display_on_console   true or false  (for when you save large results to a file and the console slows the browser down)
+	
+	4.	Set   save_to_disk   true or false
+		
+	5.	Have fun. 
+	
+	73  Phil vk7jj@me.com
+	PS. Please don't change this file name, each version has a jj<number> so I can keep track of the versions.
+
+=============  SET YOUR PREFERENCES  ============== */
+
+const format_results = "TSV";  // "TSV" or "CSV" or "JSON"
+const display_on_console = true;  // true or false
+const save_to_disk = true; // true or false
+const saved_file_name = "query_results";  // alter the file name to suit. The .tsv etc is automatically added later.
+
+
+/*=======  CREATE YOUR QUERIES BELOW OR IN PLACE OF THE DEMOS  ======== /
+	Queries MUST be named query1, query2, query3 etc or they will not show up as radio buttons
+	Use the sample query layout below as a guide.
+	Prep and test your queries using http://wspr.rocks/livequeries  then move them to this page for regular use. */
+
+// the radio button labels are the first line below, eg  /* radio button label */ 
+var query1 = `/* the last 10 spots heard by EA8BFK on 40m */
+select
+	*
+from wspr.rx where
+	time > subtractHours(now(), 1)
+	and rx_sign = 'EA8BFK'
+	and band = 7
+limit 10
+`;
+
+var query2 = `/* find the top 100 spotters of OZ7IT on 40m for 2 hours */
+with( 'OZ7IT' as callsign, 7 as chosen_band )
+select
+	rx_sign,
+	count(rx_sign) as uniqs,
+	any(rx_loc) as rx_loc,
+	any(rx_lat) as rx_lat,
+	any(rx_lon) as rx_lon,
+	round(avg(distance)) as avg_k,
+	avg(power) as avg_dBm,
+	round(avg(snr)) as avg_snr
+from wspr.rx
+where
+	time > subtractHours(now(), 2)
+	and tx_sign = callsign
+	and band = chosen_band
+group by
+	rx_sign
+order by
+	uniqs desc
+limit 100
+`;
+
+// NOTE:  Queries must be named query1, query2, query3 etc or they will not show up as radio buttons
+// Replace the   please define me   with your own query labels
+var query3 = `/* please define me */
+`;
+
+var query4 = `/* please define me */
+`;
+
+var query5 = `/* please define me */
+`;
+
+// query6 etc...
+
+
+
+
+
+
+
+
+
+
+
+
+// ---- please ignore everything below this line ----
+
+	</script>
+  </head>
+  <body>
+	<div style="margin:2rem 0 0 2.5rem; color:grey; font-size:7pt;">V0.0.4 December 2021 <br>You'll need to manually check for updates @ http://wspr.rocks</div>
+	<div style="color:brown; margin:1rem 0 0 2rem;">Get exactly the WSPR data you want direct from Arne's ClickHouse database straight to your own desktop.</div>
+	<div style="margin:0 0 0 2rem; color:#033C82;">
+		<br>The results are displayed on the <a class="helplink" href="https://screenful.com/how-to-open-the-browser-console" target="_blank">browser console</a> for easy copy and paste.
+		<br>The results are also optionally saved to disk. Choose your format from CSV, TSV or JSON
+		<br>JSON is presented as an array of strings and numbers as per the db values.
+		<br><br>Place this fully self contained html file on your desktop and open it in your browser.
+		<br>Click the button to send the selected query.
+		<br><br>Adding your own queries is easy, open the file in a plain text editor and follow the cues, don't use a word processor as it will reformat the text.
+		<br>More query information is at <a class="helplink" href="http://wspr.rocks/livequeries" target="_blank">wspr.rocks/livequeries</a> &nbsp; and at Arne's db pages at <a class="helplink" href="https://wspr.live " target="_blank">wspr.live</a>
+		<br><br>73 from Phil VK7JJ
+		<div style='margin-top:2rem;'><button type="button" class="qbutton" onclick="runSelectedQuery()">run selected query</button></div>
+		<div id="radios" style="margin-top:1rem;"></div>
+	</div>
+	
+	<script>
+		// helper functions, if you break anything you get to keep all the pieces.
+		let current_query = "query1";
+		
+		function selectMe(my){ current_query = my.value; localStorage.setItem("current_query",JSON.stringify({"qvar":current_query}));}
+		
+		function runSelectedQuery(){
+			if(window[current_query].split("\n").length < 3){ alert(`${current_query} has not yet been defined.`); return; } // 2 linefeeds is default
+			send_query();
+		}
+		
+		function showRadios(){
+			let radio_group = "";
+			if(localStorage.getItem("current_query")) current_query = JSON.parse(localStorage.getItem("current_query")).qvar;
+	
+			for (var prop in window) {
+				if (prop.indexOf("query") === 0){
+					let checked = prop === current_query ? "checked" : "";
+					let query_info = window[prop].match(/.*(\/\*[\s\S]*?\*\/).*/im); // grab text between /* .. */
+					if(query_info) query_info = `<span style="padding-left:2rem; color:#72A992; font-size:smaller;">${query_info[1]}</span>`;
+					radio_group += `<input type='radio' name='queries' value='${prop}' ${checked} onclick="selectMe(this)">&nbsp;${prop}${query_info}<br>`;
+				}
+			}
+			document.getElementById("radios").innerHTML = radio_group;
+		}
+		
+		function send_query(){
+			if(!goodfile()){ alert("Please leave 'jj<some number>' as the first three characters in the file name, it will make versioning easier for me."); return; }
+			const liveURL = 'https://db1.wspr.live/?query=';
+			let user_format = "  FORMAT TabSeparated";
+			if(format_results === "CSV") user_format = "  FORMAT CSV";
+			if(format_results === "JSON") user_format = "  FORMAT JSONCompact";
+			
+			fetch(liveURL + encodeURIComponent(window[current_query]) + user_format)
+			  .then(function (data) {
+				if (data.ok) {
+					if(format_results === "JSON"){
+						data.json().then(jsn => {
+							if(display_on_console) console.dir(jsn.data);
+							if(save_to_disk) download(JSON.stringify(jsn.data),saved_file_name);
+						});
+					} else {
+						data.text().then(txt => {
+							if(display_on_console) console.dir(txt);
+							if(save_to_disk) download(txt,saved_file_name);
+						});
+					}
+				} else {
+					data.text().then(text => console.log("Request error:\n" + text));
+				}
+			});
+		}
+		
+		function download(file_data, file_name){
+			// default to tsv and mod for user choice
+			var exportName = file_name  + ".tsv";
+			var dataStr = "data:text/tab-separated-values;charset=utf-8,";
+			if(format_results === "CSV") { dataStr = "data:text/tab-separated-values;charset=utf-8,"; exportName = file_name  + ".csv"; }
+			if(format_results === "JSON") { dataStr = "data:application/json;charset=utf-8,"; exportName = file_name  + ".json"; }
+			
+			dataStr += encodeURIComponent(file_data);
+			var downloadAnchorNode = document.createElement('a');
+			downloadAnchorNode.setAttribute("href", dataStr);
+			downloadAnchorNode.setAttribute("download", exportName);
+			document.body.appendChild(downloadAnchorNode); // required for firefox
+			downloadAnchorNode.click();
+			downloadAnchorNode.remove();
+		}
+		
+		// preserve filename
+		function goodfile(){ return /^rocks\d/.test( window.location.pathname.split("/").pop()); }
+		
+		showRadios();
+		
+	</script>
+</body>
+</html>
