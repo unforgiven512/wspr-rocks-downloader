@@ -1,0 +1,17 @@
+#
+# .gitignore
+#
+
+## GENERIC, BACKUP & TEMP FILES ##
+
+*~
+*.bak
+*.tmp
+*.swp
+
+
+## DOWNLOADED WSPR DATA ##
+
+*.csv
+*.tsv
+*.json
